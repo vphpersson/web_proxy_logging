@@ -1,0 +1,2 @@
+mitmproxy
+-e git+ssh://git@github.com/vphpersson/public_suffix.git#egg=public_suffix
