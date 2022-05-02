@@ -1,2 +1,6 @@
 mitmproxy
--e git+ssh://git@github.com/vphpersson/public_suffix.git#egg=public_suffix
+git+ssh://git@github.com/vphpersson/public_suffix.git#egg=public_suffix
+user-agents
+ua-parser
+pyyaml
+python-magic
