@@ -1,5 +1,7 @@
+git+https://github.com/vphpersson/public_suffix.git#egg=public_suffix
+git+https://github.com/vphpersson/ecs_py.git#egg=ecs_py
+git+https://github.com/vphpersson/ecs_tools_py.git#egg=ecs_tools_py
 mitmproxy
-git+ssh://git@github.com/vphpersson/public_suffix.git#egg=public_suffix
 user-agents
 ua-parser
 pyyaml
