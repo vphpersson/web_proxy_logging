@@ -191,7 +191,7 @@ class WebProxyLogger:
                     Event,
                     request_base_entry.get_field_value(field_name='event', create_namespaces=True)
                 )
-                event_entry.start = datetime.fromtimestamp(timestamp_end).astimezone()
+                event_entry.end = datetime.fromtimestamp(timestamp_end).astimezone()
 
             base_entry = merge_ecs_entries(request_base_entry, response_base_entry)
         except:
