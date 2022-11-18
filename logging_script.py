@@ -5,15 +5,18 @@ from logging.handlers import SysLogHandler
 from ipaddress import ip_address, IPv6Address
 from asyncio import get_event_loop
 from datetime import datetime
-from typing import cast
+from typing import cast, Final
 
 from mitmproxy.http import HTTPFlow, Request as FlowRequest, Response as FlowResponse
 from public_suffix.structures.public_suffix_list_trie import PublicSuffixListTrie
 from magic import from_buffer as magic_from_buffer
 
-from ecs_py import Base, Client, Server, Source, Destination, Network, HttpBody, Event
+from ecs_py import Base, Client, Server, Source, Destination, Network, Event
 from ecs_tools_py import entry_from_http_message, make_log_handler, merge_ecs_entries
 from http_lib.structures.message import Request as HTTPRequest, RequestLine, Response as HTTPResponse, StatusLine
+
+MAX_BODY_SIZE: Final[int] = 4096
+MAX_RESPONSE_WAIT_TIME_SECONDS: Final[int] = 30
 
 
 LOG: Logger = getLogger(__name__)
@@ -43,10 +46,10 @@ class WebProxyLogger:
         if raw_content := http_message_flow.raw_content:
             try:
                 body_text = http_message_flow.text
-                if len(body_text) < 4096:
+                if len(body_text) < MAX_BODY_SIZE:
                     return body_text
             except ValueError:
-                if len(raw_content) < 4096:
+                if len(raw_content) < MAX_BODY_SIZE:
                     return raw_content.decode(encoding='charmap')
         else:
             return None
@@ -56,7 +59,6 @@ class WebProxyLogger:
         return WebProxyLogger._content_from_http_message_flow(http_message_flow=flow.response or flow.request)
 
     def _request_base_from_flow(self, flow: HTTPFlow) -> Base:
-
         request_flow = flow.request
 
         request_base_entry = entry_from_http_message(
@@ -144,7 +146,7 @@ class WebProxyLogger:
         else:
             FLOW_ID_TO_REQUEST[flow.id] = base_entry
             get_event_loop().call_later(
-                delay=30,
+                delay=MAX_RESPONSE_WAIT_TIME_SECONDS,
                 callback=lambda: (
                     LOG.info(msg=json_dumps(popped_base_entry.to_dict(), default=str))
                     if (popped_base_entry := FLOW_ID_TO_REQUEST.pop(flow.id, None))
@@ -152,7 +154,7 @@ class WebProxyLogger:
                 )
             )
 
-    def response(self, flow: HTTPFlow) -> None:
+    async def response(self, flow: HTTPFlow) -> None:
         response_flow = flow.response
 
         try:
