@@ -117,9 +117,16 @@ class WebProxyLogger:
 
         if raw_content := request_flow.raw_content:
             request_base_entry.http.request.mime_type = magic_from_buffer(buffer=raw_content)
+            request_base_entry.http.request.get_field_value(
+                field_name='body',
+                create_namespaces=True
+            ).bytes = len(raw_content)
 
         if (content := WebProxyLogger._content_from_http_message_flow(http_message_flow=request_flow)) is not None:
-            request_base_entry.http.request.body = HttpBody(bytes=len(content), content=content)
+            request_base_entry.http.request.get_field_value(
+                field_name='body',
+                create_namespaces=True
+            ).content = content
 
         event_entry: Event = cast(
             Event,
@@ -167,10 +174,17 @@ class WebProxyLogger:
             )
 
             if raw_content := response_flow.raw_content:
-                response_base_entry.http.response.mime_type = magic_from_buffer(buffer=raw_content,mime=True).lower()
+                response_base_entry.http.response.mime_type = magic_from_buffer(buffer=raw_content, mime=True).lower()
+                response_base_entry.http.response.get_field_value(
+                    field_name='body',
+                    create_namespaces=True
+                ).bytes = len(raw_content)
 
             if (content := self._content_from_http_message_flow(http_message_flow=response_flow)) is not None:
-                response_base_entry.http.response.body = HttpBody(bytes=len(content), content=content)
+                response_base_entry.http.response.get_field_value(
+                    field_name='body',
+                    create_namespaces=True
+                ).content = content
 
             if timestamp_end := response_flow.timestamp_end:
                 event_entry: Event = cast(
