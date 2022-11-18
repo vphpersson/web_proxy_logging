@@ -104,7 +104,7 @@ class WebProxyLogger:
             )
             request_base_entry.destination = Destination(
                 address=server_address,
-                ip=server_address,
+                ip=server_ip_address,
                 port=server_port,
                 **server_address_info
             )
