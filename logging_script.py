@@ -1,5 +1,4 @@
 from pathlib import Path
-from json import dumps as json_dumps
 from logging import Logger, getLogger, INFO
 from logging.handlers import TimedRotatingFileHandler
 from ipaddress import ip_address, IPv6Address
@@ -11,8 +10,8 @@ from mitmproxy.http import HTTPFlow, Request as FlowRequest, Response as FlowRes
 from public_suffix.structures.public_suffix_list_trie import PublicSuffixListTrie
 from magic import from_buffer as magic_from_buffer
 
-from ecs_py import Base, Client, Server, Source, Destination, Network, Event
-from ecs_tools_py import entry_from_http_message, make_log_handler, merge_ecs_entries, json_dumps_default
+from ecs_py import Base, Client, Server, Source, Destination, Network, Event, TLS, TLSClient
+from ecs_tools_py import entry_from_http_message, make_log_handler
 from http_lib.structures.message import Request as HTTPRequest, RequestLine, Response as HTTPResponse, StatusLine
 
 MAX_BODY_SIZE: Final[int] = 4096
@@ -70,9 +69,14 @@ class WebProxyLogger:
             )
         )
 
-        server_address: str = flow.server_conn.sni or flow.request.host
-        server_address_info = dict()
+        server_address: str
+        if sni := flow.server_conn.sni:
+            request_base_entry.tls = TLS(client=TLSClient(server_name=sni))
+            server_address = sni
+        else:
+            server_address = flow.request.host
 
+        server_address_info = dict()
         try:
             ip_address(address=server_address)
         except ValueError:
@@ -113,7 +117,7 @@ class WebProxyLogger:
         request_base_entry.network = Network(protocol=flow.request.scheme, transport='tcp', type=network_type)
 
         if raw_content := request_flow.raw_content:
-            request_base_entry.http.request.mime_type = magic_from_buffer(buffer=raw_content)
+            request_base_entry.http.request.mime_type = magic_from_buffer(buffer=raw_content, mime=True)
             request_base_entry.http.request.get_field_value(
                 field_name='body',
                 create_namespaces=True
@@ -143,7 +147,7 @@ class WebProxyLogger:
             get_event_loop().call_later(
                 delay=MAX_RESPONSE_WAIT_TIME_SECONDS,
                 callback=lambda: (
-                    LOG.info(msg=json_dumps(popped_base_entry.to_dict(), default=json_dumps_default))
+                    LOG.info(msg=str(popped_base_entry))
                     if (popped_base_entry := FLOW_ID_TO_REQUEST.pop(flow.id, None))
                     else None
                 )
@@ -189,12 +193,10 @@ class WebProxyLogger:
                     request_base_entry.get_field_value(field_name='event', create_namespaces=True)
                 )
                 event_entry.end = datetime.fromtimestamp(timestamp_end).astimezone()
-
-            base_entry = merge_ecs_entries(request_base_entry, response_base_entry)
         except:
             LOG.exception(msg='An error occurred when attempting to log an HTTP response.')
         else:
-            LOG.info(msg=json_dumps(base_entry.to_dict(), default=json_dumps_default))
+            LOG.info(msg=str(request_base_entry | response_base_entry))
 
 
 addons = [WebProxyLogger()]
