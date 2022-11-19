@@ -12,7 +12,7 @@ from public_suffix.structures.public_suffix_list_trie import PublicSuffixListTri
 from magic import from_buffer as magic_from_buffer
 
 from ecs_py import Base, Client, Server, Source, Destination, Network, Event
-from ecs_tools_py import entry_from_http_message, make_log_handler, merge_ecs_entries
+from ecs_tools_py import entry_from_http_message, make_log_handler, merge_ecs_entries, json_dumps_default
 from http_lib.structures.message import Request as HTTPRequest, RequestLine, Response as HTTPResponse, StatusLine
 
 MAX_BODY_SIZE: Final[int] = 4096
@@ -143,7 +143,7 @@ class WebProxyLogger:
             get_event_loop().call_later(
                 delay=MAX_RESPONSE_WAIT_TIME_SECONDS,
                 callback=lambda: (
-                    LOG.info(msg=json_dumps(popped_base_entry.to_dict(), default=str))
+                    LOG.info(msg=json_dumps(popped_base_entry.to_dict(), default=json_dumps_default))
                     if (popped_base_entry := FLOW_ID_TO_REQUEST.pop(flow.id, None))
                     else None
                 )
@@ -194,7 +194,7 @@ class WebProxyLogger:
         except:
             LOG.exception(msg='An error occurred when attempting to log an HTTP response.')
         else:
-            LOG.info(msg=json_dumps(base_entry.to_dict(), default=str))
+            LOG.info(msg=json_dumps(base_entry.to_dict(), default=json_dumps_default))
 
 
 addons = [WebProxyLogger()]
