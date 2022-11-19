@@ -1,7 +1,7 @@
 from pathlib import Path
 from json import dumps as json_dumps
 from logging import Logger, getLogger, INFO
-from logging.handlers import SysLogHandler
+from logging.handlers import TimedRotatingFileHandler
 from ipaddress import ip_address, IPv6Address
 from asyncio import get_event_loop
 from datetime import datetime
@@ -22,11 +22,10 @@ MAX_RESPONSE_WAIT_TIME_SECONDS: Final[int] = 30
 LOG: Logger = getLogger(__name__)
 
 log_handler = make_log_handler(
-    base_class=SysLogHandler,
+    base_class=TimedRotatingFileHandler,
     provider_name='mitm',
     generate_field_names=('event.timezone', 'host.name', 'host.hostname')
-)(address='/dev/log')
-log_handler.ident = 'mitm '
+)(filename='mitm.log', when='D')
 
 LOG.addHandler(hdlr=log_handler)
 LOG.setLevel(level=INFO)
@@ -53,10 +52,6 @@ class WebProxyLogger:
                     return raw_content.decode(encoding='charmap')
         else:
             return None
-
-    @staticmethod
-    def _content_from_flow(flow: HTTPFlow) -> str | None:
-        return WebProxyLogger._content_from_http_message_flow(http_message_flow=flow.response or flow.request)
 
     def _request_base_from_flow(self, flow: HTTPFlow) -> Base:
         request_flow = flow.request
