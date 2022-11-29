@@ -4,3 +4,4 @@ git+https://github.com/vphpersson/ecs_tools_py.git#egg=ecs_tools_py
 git+https://github.com/vphpersson/http_lib.git#egg=http_lib
 mitmproxy
 python-magic
+inotify
