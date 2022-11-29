@@ -3,8 +3,7 @@ from asyncio import create_task
 
 from mitmproxy.dns import DNSFlow
 from mitmproxy.net.dns.types import A as DNS_A, AAAA as DNS_AAAA
-from inotify.adapters import Inotify
-from inotify.constants import IN_CLOSE_WRITE
+from asyncinotify import Inotify, Mask
 from vyos.configquery import ConfigTreeQuery
 from vyos.firewall import nft_update_set_elements
 
@@ -32,15 +31,14 @@ def get_updated_domain_map() -> dict[str, set[str]]:
 
 class DNSProxy:
 
-    def __int__(self):
+    def __init__(self):
         self._domain_to_group_names: dict[str, set[str]] = {}
 
     async def _monitor_config_changes(self):
-        i = Inotify()
-        i.add_watch(path_unicode='/opt/vyatta/etc/config/archive/commits', mask=IN_CLOSE_WRITE)
-
-        for _ in i.event_gen(yield_nones=False):
-            self._domain_to_group_names = get_updated_domain_map()
+        with Inotify() as inotify:
+            inotify.add_watch(path='/opt/vyatta/etc/config/archive/commits', mask=Mask.CLOSE_WRITE)
+            async for _ in inotify:
+                self._domain_to_group_names = get_updated_domain_map()
 
     async def running(self):
         create_task(self._monitor_config_changes())
