@@ -24,7 +24,7 @@ log_handler = make_log_handler(
     base_class=TimedRotatingFileHandler,
     provider_name='mitm',
     generate_field_names=('event.timezone', 'host.name', 'host.hostname')
-)(filename='mitm.log', when='D')
+)(filename='/var/log/mitmproxy/mitmproxy.log', when='D')
 
 LOG.addHandler(hdlr=log_handler)
 LOG.setLevel(level=INFO)
